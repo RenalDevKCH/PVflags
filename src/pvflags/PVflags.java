@@ -22,6 +22,9 @@ public class PVflags
         //get list of nhs numbers where flag is on
         //compare to list that should be turned off
         //if nhs is present in both then turn off flag
+        Data d = new Data();
+        DatabaseConnection dbc = new DatabaseConnection();
+        d.getListOfNHSnumbersWhereDataIsSent(dbc);
     }
     
 }
