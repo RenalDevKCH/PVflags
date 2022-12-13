@@ -18,13 +18,15 @@ public class PVflags
      */
     public static void main(String[] args)
     {
-        //get data from spreadsheet
-        //get list of nhs numbers where flag is on
-        //compare to list that should be turned off
-        //if nhs is present in both then turn off flag
+        //create new instance of class
         Data d = new Data();
         DatabaseConnection dbc = new DatabaseConnection();
-        d.getListOfNHSnumbersWhereDataIsSent(dbc);
+        //get list of patients where flag "yes"
+        d.getListOfPatientsFlaggedYes(dbc);
+        //get list of patients who should be turned of
+        d.getListOfPatientsWhoShouldBeRemoved(dbc);
+        //compare to list that should be turned off
+        //if nhs is present in both then turn off flag
     }
-    
+
 }

@@ -1,3 +1,4 @@
+
 package pvflags;
 
 import java.sql.PreparedStatement;
@@ -11,10 +12,13 @@ import java.util.ArrayList;
  */
 public class Data
 {
-    public void getListOfNHSnumbersWhereDataIsSent(DatabaseConnection dbc)
+    ArrayList<String> patientsWhereFlagIsYes = new ArrayList<>();
+    ArrayList<String> patientsToBeRemoved = new ArrayList<>();
+
+    public void getListOfPatientsFlaggedYes(DatabaseConnection dbc)
     {
-        System.out.println("getting data...");
-        String query = "SELECT "
+        System.out.println("Getting patients flagged \"Yes\"... ");
+        String queryFlaggedYes = "SELECT "
                 + "[Pat_ID], "
                 + "SUBSTRING([PS-NHS],1,3) + SUBSTRING([PS-NHS],5,3) + SUBSTRING([PS-NHS],9,4) AS 'NHS', "
                 + "[ID-FNAM], "
@@ -29,19 +33,21 @@ public class Data
                 + ") AS 'PV flag' "
                 + "INTO #flag "
                 + "FROM [dbo].[Tbl_Demographics] AS DG;"
-                + ""
-                + "SELECT #flag.[NHS] AS 'NHS'FROM #flag WHERE #flag.[PV flag] = -1;"
-                + ""
+                + " "
+                + "SELECT #flag.[NHS] AS 'NHS'FROM #flag "
+                + "WHERE #flag.[PV flag] = -1 "
+                + "ORDER BY #flag.[NHS] ASC;"
+                + " "
                 + "DROP TABLE #flag";
-        ArrayList<String> NHSnumbersWhereDataIsSent = new ArrayList<>();
+
         try
         {
             dbc.openReadOnlyConnection();
-            PreparedStatement prep = dbc.getReadOnlyConn().prepareStatement(query);
+            PreparedStatement prep = dbc.getReadOnlyConn().prepareStatement(queryFlaggedYes);
             ResultSet rs = prep.executeQuery();
             while (rs.next())
             {
-                NHSnumbersWhereDataIsSent.add(rs.getString("NHS"));
+                patientsWhereFlagIsYes.add(rs.getString("NHS"));
             }
             dbc.closeReadOnlyConnection();
         }
@@ -50,9 +56,23 @@ public class Data
             System.out.println("unable to read SQL " + ex);
             System.exit(0);
         }
-        for (String s : NHSnumbersWhereDataIsSent)
-        {
-            System.out.println(s);
-        }
+//        for (String s : patientsWhereFlagIsYes)
+//        {
+//            System.out.println(s);
+//        }
+    }
+
+    void getListOfPatientsWhoShouldBeRemoved(DatabaseConnection dbc)
+    {
+        System.out.println("Getting patients who should be removed... ");
+        System.out.println("Reading excel file...");
+        //read excel file
+        //https://howtodoinjava.com/java/library/readingwriting-excel-files-in-java-poi-tutorial/
+        //create workbook instance from an excel sheet
+        //get to the desired sheet
+        //increment row number
+        //iterate over all cells in a row (might not need to do this as I'm only reading one column)
+        //repeat steps 3 and 4 until all data is read.
+        //get list from column
     }
 }
