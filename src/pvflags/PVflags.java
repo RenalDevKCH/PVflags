@@ -26,7 +26,12 @@ public class PVflags
         //get list of patients who should be turned of
         d.getListOfPatientsWhoShouldBeRemoved(dbc);
         //compare to list that should be turned off
+//        d.compareLists(d.getListOfPatientsFlaggedYesTEST(), d.getPatientsToBeRemoved());
+        d.compareLists(d.getPatientsWhereFlagIsYesList(), d.getPatientsToBeRemovedList());
+        //delete code requires UID's so convert NHS numbers to UID
+//        d.getUIDlist(dbc);
         //if nhs is present in both then turn off flag
+//        d.turnOffFlag(dbc);
     }
 
 }

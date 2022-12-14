@@ -10,6 +10,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
@@ -21,9 +23,10 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
  */
 public class Data
 {
-    ArrayList<String> patientsWhereFlagIsYes = new ArrayList<>();
-    ArrayList<String> patientsToBeRemoved = new ArrayList<>();
-    ArrayList<String> patientsToTurnFlagOff = new ArrayList<>();
+    ArrayList<String> patientsWhereFlagIsYesList = new ArrayList<>();
+    ArrayList<String> patientsToBeRemovedList = new ArrayList<>();
+    ArrayList<String> patientsToTurnFlagOffList = new ArrayList<>();
+    ArrayList<String> UIDlist = new ArrayList<>();
     String sep = File.separator;
     String pathname = sep + sep + sep + sep + "user.ad.ekhuft.nhs.uk"
             + sep + "User"
@@ -32,12 +35,20 @@ public class Data
             + sep + "RENAL"
             + sep + "PKB";
     String fileName = sep + "PV patients to be deleted.xlsx";
+//    String fileName = sep + "PV patients to be deleted test.xlsx";
+
+    public ArrayList<String> getUIDlist()
+    {
+        return UIDlist;
+    }
+    
 
     public void getListOfPatientsFlaggedYes(DatabaseConnection dbc)
     {
         System.out.println("Getting patients flagged \"Yes\"... ");
         String queryFlaggedYes = "SELECT "
                 + "[Pat_ID], "
+                + "DG.[UID], "
                 + "SUBSTRING([PS-NHS],1,3) + SUBSTRING([PS-NHS],5,3) + SUBSTRING([PS-NHS],9,4) AS 'NHS', "
                 + "[ID-FNAM], "
                 + "[ID-NAM], "
@@ -52,7 +63,7 @@ public class Data
                 + "INTO #flag "
                 + "FROM [dbo].[Tbl_Demographics] AS DG;"
                 + " "
-                + "SELECT #flag.[NHS] AS 'NHS'FROM #flag "
+                + "SELECT #flag.[UID] AS 'UID'FROM #flag "
                 + "WHERE #flag.[PV flag] = -1 "
                 + "ORDER BY #flag.[NHS] ASC;"
                 + " "
@@ -65,22 +76,26 @@ public class Data
             ResultSet rs = prep.executeQuery();
             while (rs.next())
             {
-                patientsWhereFlagIsYes.add(rs.getString("NHS"));
+                patientsWhereFlagIsYesList.add(rs.getString("UID"));
             }
             dbc.closeReadOnlyConnection();
         }
         catch (SQLException ex)
         {
-            System.out.println("unable to read SQL " + ex);
+            System.out.println("unable to read SQL to get list of patients flagged \"yes\". " + ex);
             System.exit(0);
         }
-//        for (String s : patientsWhereFlagIsYes)
-//        {
-//            System.out.println(s);
-//        }
     }
 
-    void getListOfPatientsWhoShouldBeRemoved(DatabaseConnection dbc)
+    public ArrayList<String> getListOfPatientsFlaggedYesTEST()
+    {
+        patientsWhereFlagIsYesList.add("3");
+        patientsWhereFlagIsYesList.add("4");
+        patientsWhereFlagIsYesList.add("8");
+        return patientsWhereFlagIsYesList;
+    }
+
+    public void getListOfPatientsWhoShouldBeRemoved(DatabaseConnection dbc)
     {
         FileInputStream file = null;
         try
@@ -97,7 +112,7 @@ public class Data
             //iterate each row
             Iterator<Row> rowIterator = sheet.iterator();
             String cellValue = "";
-            
+
             while (rowIterator.hasNext())
             {
                 Row row = rowIterator.next();
@@ -123,9 +138,8 @@ public class Data
                     //add each item to the arraylist
                     if (!cellValue.equals("Identifier"))
                     {
-                        patientsToBeRemoved.add(cellValue);
+                        patientsToBeRemovedList.add(cellValue);
                     }
-                    
                 }
             }
         }
@@ -151,17 +165,106 @@ public class Data
                 System.exit(0);
             }
         }
-        compareBothLists(patientsToBeRemoved, patientsWhereFlagIsYes);
     }
 
-    private void compareBothLists(ArrayList<String> patientsToBeRemoved, ArrayList<String> patientsWhereFlagIsYes)
+    public ArrayList<String> getPatientsWhereFlagIsYesList()
     {
-        for (String item : patientsToBeRemoved)
+        return patientsWhereFlagIsYesList;
+    }
+
+    public ArrayList<String> getPatientsToBeRemovedList()
+    {
+        return patientsToBeRemovedList;
+    }
+
+    public ArrayList<String> getPatientsToTurnFlagOffList()
+    {
+        return patientsToTurnFlagOffList;
+    }
+
+    public void compareLists(ArrayList<String> flaggedYes, ArrayList<String> toBeRemoved)
+    {
+        System.out.println("comparing lists...");
+        for (String item : flaggedYes)
         {
-            if (patientsWhereFlagIsYes.contains(item))
+            if (toBeRemoved.contains(item))
             {
-                patientsToTurnFlagOff.add(item);
+                patientsToTurnFlagOffList.add(item);
             }
+        }
+        System.out.println("list size = " + patientsToTurnFlagOffList);
+        System.out.println("list size = " + patientsToTurnFlagOffList.size());
+    }
+
+//    public void turnOffFlag()
+//    {
+//        //open live connection
+//        //write query
+//        
+//    }
+    public void turnOffFlag(DatabaseConnection dbc)
+    {
+        dbc.openLiveConnection();
+        //SQL query needs to use list in the where clause
+        String flagQuery = "BEGIN TRANSACTION "
+                + "UPDATE [dbo].[tbl_PatientView_Release] "
+                + "SET [TakingPart] = 0 "
+                + "WHERE [fkPatient] IN (" + iterateFlagOffList() + ")"; //needs to be UID !!
+        BUG. need to use UIDs or NHS numbers but not both
+        try
+        {
+            dbc.getLiveConn().setAutoCommit(false);
+            PreparedStatement prep = dbc.getLiveConn().prepareStatement(flagQuery);
+            prep.executeUpdate();
+            if (prep.getUpdateCount() == getPatientsToTurnFlagOffList().size()) //list size is 719
+            {
+//                dbc.getLiveConn().commit();
+                System.out.println("update count = " + prep.getUpdateCount());
+                System.out.println("list size = " + getPatientsToTurnFlagOffList().size());
+                dbc.getLiveConn().rollback();
+            }
+            else
+            {
+                dbc.getLiveConn().rollback();
+            }
+        }
+        catch (SQLException ex)
+        {
+            System.out.println("unable to read SQL to turn flag off. " + ex);
+            System.exit(0);
+        }
+        dbc.closeLiveConnection();
+    }
+
+    private String iterateFlagOffList()
+    {
+        StringBuilder sb = new StringBuilder();
+        for (String item : getPatientsToTurnFlagOffList())
+        {
+            sb.append(item).append(",");
+        }
+        String str = sb.toString();
+        str = str.substring(0, str.length() - 1);
+        return str;
+    }
+
+    void getUIDlist(DatabaseConnection dbc)
+    {
+        try
+        {
+            dbc.openReadOnlyConnection();            
+            String uidQuery = "";
+            PreparedStatement prep = dbc.getReadOnlyConn().prepareStatement(uidQuery);
+            ResultSet rs = prep.executeQuery();
+            while (rs.next())
+            {
+                
+            }
+        }
+        catch (SQLException ex)
+        {
+            System.out.println("unable to read sql for UID list " + ex);
+            System.exit(0);
         }
     }
 }
