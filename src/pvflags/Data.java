@@ -10,6 +10,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
@@ -21,11 +23,13 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
  */
 public class Data
 {
+
     ArrayList<String> listOfNHSnumbers = new ArrayList<>();
     ArrayList<String> listOfUIDs = new ArrayList<>();
     ArrayList<String> testList = new ArrayList<>();
+    ArrayList<Patient> patientList = new ArrayList<>();
     String sep = File.separator;
-    String pathname = sep + sep + sep + sep + "user.ad.ekhuft.nhs.uk"
+    String pathName = sep + sep + sep + sep + "user.ad.ekhuft.nhs.uk"
             + sep + "User"
             + sep + "simon.weatherley"
             + sep + "Documents"
@@ -34,22 +38,16 @@ public class Data
     String fileName = sep + "patients who should have flag turned off.xlsx";
 //    String fileName = sep + "PV patients to be deleted test.xlsx";
 
-    public ArrayList<String> getListOfNHSnumbers()
+    public ArrayList<Patient> getPatientList()
     {
-        return listOfNHSnumbers;
+        return patientList;
     }
 
-    public ArrayList<String> getListOfUIDs()
+    public void setPatientList(ArrayList<Patient> patientList)
     {
-        return listOfUIDs;
+        this.patientList = patientList;
     }
 
-    public ArrayList<String> getTestList()
-    {
-        return testList;
-    }
-
-    
     public ArrayList<String> getListOfPatientsFlaggedYesTEST()
     {
         testList.add("3");
@@ -57,70 +55,180 @@ public class Data
         testList.add("8");
         return testList;
     }
-}
 
+    public void getListOfNHSnumbers()
+    {
+        try
+        {
+            FileInputStream file = new FileInputStream(new File(pathName + fileName));
+            try
+            {
+                //create workbook instance holding reference to excel file
+                System.out.println("Getting patients who should be removed... ");
+                System.out.println("Reading excel file...");
+                //create workbook instance holding reference to excel file
+                XSSFWorkbook workbook = new XSSFWorkbook(file);
+                //get relevant sheet from the workbook
+                XSSFSheet sheet = workbook.getSheet("patients to turn flag off"); //this reads NHS numbers
+                //iterate through each row
+                Iterator<Row> rowIterator = sheet.iterator();
+                String cellValue = "";
+                while (rowIterator.hasNext())
+                {
+                    Row row = rowIterator.next();
+                    //for each row, iterate all the columns
+                    Iterator<Cell> cellIterator = row.cellIterator();
+                    while (cellIterator.hasNext())
+                    {
+                        Cell cell = cellIterator.next();
+//                        int r = row.getRowNum();
+//                        int c = cell.getColumnIndex();
+                        //check the cell type
+                        switch (cell.getCellType())
+                        {
+                            case NUMERIC:
+                                //convert to string
+                                long excelData = (long) cell.getNumericCellValue();
+                                cellValue = String.valueOf(excelData);
+                                break;
+                            case STRING:
+                                cellValue = cell.getStringCellValue();
+                                break;
+                        }
+                        //add each number to arraylist
+                        if (!cellValue.equals("Identifier"))
+                        {
+                            Patient p = new Patient();
+                            p.setNHSnumber(cellValue);
+                            patientList.add(p);
+                        }
+                    }
+                }
+//                for (Patient p : patientList)
+//                {
+//                    System.out.println(p.getNHSnumber());
+//                }
+            }
+            catch (IOException ex)
+            {
+                System.out.println("Unable to read from " + pathName + fileName
+                        + "\nPlease ensure file exists." + ex);
+                System.exit(0);
+            }
+        }
+        catch (FileNotFoundException ex)
+        {
+            System.out.println("unable to find file " + ex);
+            System.exit(0);
+        }
+    }
 
+    public void getUIDlist(DatabaseConnection dbc, Patient p)
+    {
+        try
+        {
+            dbc.openReadOnlyConnection();
+            String UIDquery = "SELECT [UID] "
+                    + "FROM [dbo].[Tbl_Demographics] "
+                    + "WHERE [PS-NHS] = ? ";
+            PreparedStatement prep = dbc.getReadOnlyConn().prepareStatement(UIDquery);
+            for (Patient pSQL : patientList)
+            {
+                prep.setString(1, pSQL.getNHSnumberWithSpaces());
+                ResultSet rs = prep.executeQuery();
+                while (rs.next())
+                {
+                    pSQL.setUID(rs.getString("UID"));
+                }
+            }
+        }
+        catch (SQLException ex)
+        {
+            System.out.println("unable to read SQL to get UID list " + ex);
+            System.exit(0);
+        }
+//        for (Patient pz : patientList)
+//        {
+//            System.out.println(pz.getNHSnumberWithSpaces() + ", " +  pz.getUID());
+//        }
+    }
 
+    public void addSpacesToNHS()
+    {
+        for (Patient p : patientList)
+        {
+            p.setNHSnumberWithSpaces(p.getNHSnumber().substring(0, 3) + " "
+                    + p.getNHSnumber().substring(3, 6) + " "
+                    + p.getNHSnumber().substring(6, 10));
+        }
+//        for (Patient p : patientList)
+//        {
+//            System.out.println(p.getNHSnumber().substring(0, 3) + " "
+//                    + p.getNHSnumber().substring(3, 6) + " "
+//                    + p.getNHSnumber().substring(6, 10));
+//        }
+    }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//    public void turnOffFlag(DatabaseConnection dbc)
+//    private String createNHSlistForSQL()
 //    {
-//        dbc.openLiveConnection();
-//        //SQL query needs to use list in the where clause
-//        String flagQuery = "BEGIN TRANSACTION "
-//                + "UPDATE [dbo].[tbl_PatientView_Release] "
-//                + "SET [TakingPart] = 0 "
-//                + "WHERE [fkPatient] IN (" + iterateFlagOffList() + ")"; //needs to be UID !!
-//        try
+//        StringBuilder sb = new StringBuilder();
+//        for (Patient p : patientList)
 //        {
-//            dbc.getLiveConn().setAutoCommit(false);
-//            PreparedStatement prep = dbc.getLiveConn().prepareStatement(flagQuery);
-//            prep.executeUpdate();
-//            if (prep.getUpdateCount() == getPatientsToTurnFlagOffList().size()) //list size is 719
-//            {
-////                dbc.getLiveConn().commit();
-//                System.out.println("update count = " + prep.getUpdateCount());
-//                System.out.println("list size = " + getPatientsToTurnFlagOffList().size());
-//                dbc.getLiveConn().rollback();
-//            }
-//            else
-//            {
-//                dbc.getLiveConn().rollback();
-//            }
+//            sb.append(p.getNHSnumberWithSpaces()).append(",");
 //        }
-//        catch (SQLException ex)
-//        {
-//            System.out.println("unable to read SQL to turn flag off. " + ex);
-//            System.exit(0);
-//        }
-//        dbc.closeLiveConnection();
+//        String str = sb.toString();
+//        str = str.substring(0, str.length() - 1);
+//        return str;
 //    }
 
+    public void turnOffFlag(DatabaseConnection dbc)
+    {
+        dbc.openLiveConnection();
+        //SQL query needs to use list in the where clause
+        String flagQuery = "BEGIN TRANSACTION "
+                + "UPDATE [dbo].[tbl_PatientView_Release] "
+                + "SET [TakingPart] = 0 "
+                + "WHERE [fkPatient] IN (" + createUIDlistForSQL() + ")"; //needs to be UID !!
+        try
+        {
+            dbc.getLiveConn().setAutoCommit(false);
+            PreparedStatement prep = dbc.getLiveConn().prepareStatement(flagQuery);
+            prep.executeUpdate();
+            if (prep.getUpdateCount() == patientList.size()) //list size is 719
+            {
+//                dbc.getLiveConn().commit();
+                System.out.println("update count = " + prep.getUpdateCount());
+//                System.out.println("list size = " + getPatientsToTurnFlagOffList().size());
+                dbc.getLiveConn().rollback();
+            }
+            else
+            {
+                dbc.getLiveConn().rollback();
+            }
+        }
+        catch (SQLException ex)
+        {
+            System.out.println("unable to read SQL to turn flag off. " + ex);
+            System.exit(0);
+        }
+        dbc.closeLiveConnection();
+    }
+
+    private String createUIDlistForSQL()
+    {
+        StringBuilder sb = new StringBuilder();
+        for (Patient p : patientList)
+        {
+            sb.append(p.getUID()).append(",");
+        }
+        String str = sb.toString();
+        str = str.substring(0, str.length() - 1);
+        return str;
+    }
+
+}
+
+//    }
 //    private String iterateFlagOffList()
 //    {
 //        StringBuilder sb = new StringBuilder();
@@ -132,7 +240,6 @@ public class Data
 //        str = str.substring(0, str.length() - 1);
 //        return str;
 //    }
-
 //    public void getListOfNHSnumbers(DatabaseConnection dbc)
 //    {
 //        FileInputStream file = null;
@@ -203,21 +310,15 @@ public class Data
 //                System.exit(0);
 //            }
 //        }
-        
-        
-        
-        
 //        er.readExcelSheet(getListOfNHSnumbers());
 //        System.out.println(getListOfNHSnumbers());
 //        System.exit(0);
 //    }
-
 //    public void getUIDlist(DatabaseConnection dbc)
 //    {
 //        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
 //    }
 //}
-
 //    public void getListOfPatientsFlaggedYes(DatabaseConnection dbc)
 //    {
 //        System.out.println("Getting patients flagged \"Yes\"... ");

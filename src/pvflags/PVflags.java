@@ -20,14 +20,15 @@ public class PVflags
     {
         Data d = new Data();
         DatabaseConnection dbc = new DatabaseConnection();
+        Patient p = new Patient();
         //get list of patients who should have flag turned of (this will be nhs numbers)
-        d.getListOfPatientsWhoShouldBeRemoved(dbc);
-//        d.getListOfNHSnumbers(dbc);
-        System.out.println(d.getListOfNHSnumbers());
+        d.getListOfNHSnumbers();
+        //convert the nhs numbers so that the database can use them
+        d.addSpacesToNHS();
         //get UID for each patient
-//        d.getUIDlist(dbc);
+        d.getUIDlist(dbc, p);
         //turn off the flag using the UID
-//        d.turnOffFlag(dbc);
+        d.turnOffFlag(dbc);
     }
 
 }
