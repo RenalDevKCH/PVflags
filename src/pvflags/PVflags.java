@@ -18,19 +18,15 @@ public class PVflags
      */
     public static void main(String[] args)
     {
-        //create new instance of class
         Data d = new Data();
         DatabaseConnection dbc = new DatabaseConnection();
-        //get list of patients where flag "yes"
-        d.getListOfPatientsFlaggedYes(dbc);
-        //get list of patients who should be turned of
+        //get list of patients who should have flag turned of (this will be nhs numbers)
         d.getListOfPatientsWhoShouldBeRemoved(dbc);
-        //compare to list that should be turned off
-//        d.compareLists(d.getListOfPatientsFlaggedYesTEST(), d.getPatientsToBeRemoved());
-        d.compareLists(d.getPatientsWhereFlagIsYesList(), d.getPatientsToBeRemovedList());
-        //delete code requires UID's so convert NHS numbers to UID
+//        d.getListOfNHSnumbers(dbc);
+        System.out.println(d.getListOfNHSnumbers());
+        //get UID for each patient
 //        d.getUIDlist(dbc);
-        //if nhs is present in both then turn off flag
+        //turn off the flag using the UID
 //        d.turnOffFlag(dbc);
     }
 
