@@ -25,6 +25,7 @@ public class Data
 {
 
     ArrayList<String> listOfNHSnumbers = new ArrayList<>();
+    ArrayList<String> listOfPatientsFlaggedYes = new ArrayList<>();
     ArrayList<String> listOfUIDs = new ArrayList<>();
     ArrayList<String> testList = new ArrayList<>();
     ArrayList<Patient> patientList = new ArrayList<>();
@@ -64,7 +65,7 @@ public class Data
             try
             {
                 //create workbook instance holding reference to excel file
-                System.out.println("Getting patients who should be removed... ");
+                System.out.println("Getting list of patients... ");
                 System.out.println("Reading excel file...");
                 //create workbook instance holding reference to excel file
                 XSSFWorkbook workbook = new XSSFWorkbook(file);
@@ -123,8 +124,9 @@ public class Data
         }
     }
 
-    public void getUIDlist(DatabaseConnection dbc, Patient p)
+    public void addUIDtoPatient(DatabaseConnection dbc, Patient p)
     {
+        System.out.println("getting list of UID\'s");
         try
         {
             dbc.openReadOnlyConnection();
@@ -141,6 +143,7 @@ public class Data
                     pSQL.setUID(rs.getString("UID"));
                 }
             }
+            dbc.closeReadOnlyConnection();
         }
         catch (SQLException ex)
         {
@@ -155,6 +158,7 @@ public class Data
 
     public void addSpacesToNHS()
     {
+        System.out.println("adding spaces to the NHS numbers...");
         for (Patient p : patientList)
         {
             p.setNHSnumberWithSpaces(p.getNHSnumber().substring(0, 3) + " "
@@ -180,11 +184,13 @@ public class Data
 //        str = str.substring(0, str.length() - 1);
 //        return str;
 //    }
-
     public void turnOffFlag(DatabaseConnection dbc)
     {
         dbc.openLiveConnection();
         //SQL query needs to use list in the where clause
+
+        //need to set "authority date"  and "last updated by" and where should check for radar comment as
+        //a double check. In theory, they are all filtered out already
         String flagQuery = "BEGIN TRANSACTION "
                 + "UPDATE [dbo].[tbl_PatientView_Release] "
                 + "SET [TakingPart] = 0 "
@@ -197,9 +203,10 @@ public class Data
             if (prep.getUpdateCount() == patientList.size()) //list size is 719
             {
 //                dbc.getLiveConn().commit();
+                dbc.getLiveConn().rollback();
                 System.out.println("update count = " + prep.getUpdateCount());
 //                System.out.println("list size = " + getPatientsToTurnFlagOffList().size());
-                dbc.getLiveConn().rollback();
+
             }
             else
             {
@@ -214,15 +221,22 @@ public class Data
         dbc.closeLiveConnection();
     }
 
-    private String createUIDlistForSQL()
+    public String createUIDlistForSQL()
     {
         StringBuilder sb = new StringBuilder();
+//        int x = 0;
         for (Patient p : patientList)
         {
+//            if (x < 21)
+//            {
             sb.append(p.getUID()).append(",");
+//            }
+//            System.out.println(p.getNHSnumberWithSpaces());
+//            x += 1;
         }
         String str = sb.toString();
         str = str.substring(0, str.length() - 1);
+        System.out.println(str);
         return str;
     }
 
