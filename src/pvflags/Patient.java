@@ -9,7 +9,7 @@ public class Patient
 {
     String NHSnumber;
     String NHSnumberWithSpaces;
-    String UID;
+    int UID;
 
     public String getNHSnumberWithSpaces()
     {
@@ -31,12 +31,12 @@ public class Patient
         this.NHSnumber = NHSnumber;
     }
 
-    public String getUID()
+    public int getUID()
     {
         return UID;
     }
 
-    public void setUID(String UID)
+    public void setUID(int UID)
     {
         this.UID = UID;
     }

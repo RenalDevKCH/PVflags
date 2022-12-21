@@ -5,7 +5,6 @@
  */
 
 package pvflags;
-
 /**
  *
  * @author RenalDevKCH
@@ -28,7 +27,8 @@ public class PVflags
         //get UID for each patient
         d.addUIDtoPatient(dbc, p);
         //turn off the flag using the UID
-        d.createUIDlistForSQL();
+        d.checkPatientList();
+        d.getNumberOfPatients();
 //        d.turnOffFlag(dbc);
         System.gc();
     }
