@@ -29,7 +29,7 @@ public class PVflags
         //turn off the flag using the UID
         d.checkPatientList();
         d.getNumberOfPatients();
-//        d.turnOffFlag(dbc);
+        d.turnOffFlag(dbc);
         System.gc();
     }
 

@@ -36,6 +36,12 @@ public class Data
             + sep + "PKB";
     String fileName = sep + "patients who should have flag turned off.xlsx";
 //    String fileName = sep + "patients who should have flag turned off test file.xlsx";
+    int UIDcount;
+
+    public int getUIDcount()
+    {
+        return UIDcount;
+    }
 
     public ArrayList<Patient> getPatientList()
     {
@@ -54,7 +60,6 @@ public class Data
 //        testList.add("8");
 //        return testList;
 //    }
-
     public void getListOfNHSnumbers()
     {
         try
@@ -128,12 +133,16 @@ public class Data
             PreparedStatement prep = dbc.getReadOnlyConn().prepareStatement(UIDquery);
             for (Patient pSQL : patientList)
             {
-                prep.setString(1, pSQL.getNHSnumberWithSpaces());
-                ResultSet rs = prep.executeQuery();
-                while (rs.next())
+                if (pSQL.getNHSnumberWithSpaces() != null)
                 {
-                    pSQL.setUID(rs.getInt("UID"));
+                    prep.setString(1, pSQL.getNHSnumberWithSpaces());
+                    ResultSet rs = prep.executeQuery();
+                    while (rs.next())
+                    {
+                        pSQL.setUID(rs.getInt("UID"));
+                    }
                 }
+
             }
             dbc.closeReadOnlyConnection();
         }
@@ -147,13 +156,32 @@ public class Data
     public void addSpacesToNHS()
     {
         System.out.println("adding spaces to the NHS numbers...");
+        String spacedRegex = "^\\d{3}\\s\\d{3}\\s\\d{4}$";
+        String nonSpacedRegex = "^\\d{10}$";
         for (Patient p : patientList)
         {
-            p.setNHSnumberWithSpaces(p.getNHSnumber().substring(0, 3) + " "
-                    + p.getNHSnumber().substring(3, 6) + " "
-                    + p.getNHSnumber().substring(6, 10));
+            String NHSnum = p.getNHSnumber();
+            if (NHSnum.matches(spacedRegex))
+            {
+                p.setNHSnumberWithSpaces(NHSnum);
+            }
+            else
+            {
+                if (NHSnum.matches(nonSpacedRegex))
+                {
+                    p.setNHSnumberWithSpaces(NHSnum.substring(0, 3) + " "
+                            + NHSnum.substring(3, 6) + " "
+                            + NHSnum.substring(6, 10));
+                }
+                else
+                {
+                    System.out.println(NHSnum + " is invalid");
+                }
+            }
+
         }
     }
+
     public void turnOffFlag(DatabaseConnection dbc)
     {
         dbc.openLiveConnection();
@@ -174,7 +202,7 @@ public class Data
 //            PreparedStatement prep = dbc.getReadOnlyConn().prepareStatement(flagQuery);
             PreparedStatement prep = dbc.getLiveConn().prepareStatement(flagQuery);
             prep.executeUpdate();
-            if (prep.getUpdateCount() == patientList.size())
+            if (prep.getUpdateCount() == getUIDcount())
             {
 //                commit(dbc);
                 rollback(dbc);
@@ -193,7 +221,7 @@ public class Data
         {
             dbc.closeLiveConnection();
         }
-        
+
     }
 
 //    public String createUIDlistForSQL()
@@ -210,7 +238,6 @@ public class Data
 //        str = str.substring(0, str.length() - 1);
 //        return str;
 //    }
-
     private void commit(DatabaseConnection dbc) throws SQLException
     {
         dbc.getLiveConn().commit();
@@ -234,15 +261,22 @@ public class Data
         (fkpatient3 (int) ,TakingPart (int), authDate (dateTime), comments (nVarChar), updatedBy (int));
          */
         sb.append("VALUES ");
+
+        UIDcount = 0;
         for (Patient x : patientList)
         {
-            sb.append("(")
-                    .append(x.getUID()).append(", ") //fkPatient (int)
-                    .append(0).append(", ") //Taking part (int)
-                    .append("GETDATE()").append(", ") //current time (authDate) (dateTime)
-                    .append("\'").append("inactive patient").append("\', ") // comment
-                    .append(2317) //user id (int)
-                    .append("),");
+            if (x.getUID() != 0)
+            {
+                sb.append("(")
+                        .append(x.getUID()).append(", ") //fkPatient (int)
+                        .append(0).append(", ") //Taking part (int)
+                        .append("GETDATE()").append(", ") //current time (authDate) (dateTime)
+                        .append("\'").append("inactive patient").append("\', ") // comment
+                        .append(2317) //user id (int)
+                        .append("),");
+                UIDcount += 1;
+            }
+
         }
         str = sb.toString();
         return str.substring(0, str.length() - 1);
