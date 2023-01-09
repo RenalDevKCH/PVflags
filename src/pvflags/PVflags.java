@@ -5,6 +5,7 @@
  */
 
 package pvflags;
+
 /**
  *
  * @author RenalDevKCH
@@ -21,15 +22,16 @@ public class PVflags
         DatabaseConnection dbc = new DatabaseConnection();
         Patient p = new Patient();
         //get list of patients who should have flag turned of (this will be nhs numbers)
-        d.getListOfNHSnumbers(); //this is a list of patients where the flag needs turning off.
+        d.getListOfNHSnumbers();
         //convert the nhs numbers so that the database can use them
         d.addSpacesToNHS();
         //get UID for each patient
         d.addUIDtoPatient(dbc, p);
         //turn off the flag using the UID
-        d.checkPatientList();
-        d.getNumberOfPatients();
+//        d.checkPatientList();
+//        d.getNumberOfPatients();
         d.turnOffFlag(dbc);
+//        d.printSQLstring();
         System.gc();
     }
 

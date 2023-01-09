@@ -21,7 +21,6 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
  */
 public class Data
 {
-
     ArrayList<String> listOfNHSnumbers = new ArrayList<>();
     ArrayList<String> listOfPatientsFlaggedYes = new ArrayList<>();
     ArrayList<String> listOfUIDs = new ArrayList<>();
@@ -36,6 +35,7 @@ public class Data
             + sep + "PKB";
     String fileName = sep + "patients who should have flag turned off.xlsx";
 //    String fileName = sep + "patients who should have flag turned off test file.xlsx";
+    String flagQuery; //stringBuilder
     int UIDcount;
 
     public int getUIDcount()
@@ -53,13 +53,6 @@ public class Data
         this.patientList = patientList;
     }
 
-//    public ArrayList<String> getListOfPatientsFlaggedYesTEST()
-//    {
-//        testList.add("3");
-//        testList.add("4");
-//        testList.add("8");
-//        return testList;
-//    }
     public void getListOfNHSnumbers()
     {
         try
@@ -142,7 +135,6 @@ public class Data
                         pSQL.setUID(rs.getInt("UID"));
                     }
                 }
-
             }
             dbc.closeReadOnlyConnection();
         }
@@ -178,31 +170,30 @@ public class Data
                     System.out.println(NHSnum + " is invalid");
                 }
             }
-
         }
     }
 
     public void turnOffFlag(DatabaseConnection dbc)
     {
+        flagQuery = "INSERT INTO [RENALPLUS].[dbo].[tbl_PatientView_Release] "
+                + "([fkPatient],[TakingPart],[AuthDate],[Comments],[UpdatedBy]) "
+                + getSQLinsertValues();
+        printSQLstring();
+        System.exit(0);
         dbc.openLiveConnection();
 //        dbc.openReadOnlyConnection();
         /*
-        
         take first patient and check manually on pkb to check they haven't logged on and
         then in RP make them inactive as of today and then db table
         DO INSERT NOT UPDATE AND ADD COMMENT WITH TODAYS DATE AND USER ETC ETC
-
          */
-        String flagQuery = "INSERT INTO [RENALPLUS].[dbo].[tbl_PatientView_Release] "
-                + "([fkPatient],[TakingPart],[AuthDate],[Comments],[UpdatedBy]) "
-                + getSQLinsertValues(); //stringBuilder
         try
         {
             dbc.getLiveConn().setAutoCommit(false);
 //            PreparedStatement prep = dbc.getReadOnlyConn().prepareStatement(flagQuery);
             PreparedStatement prep = dbc.getLiveConn().prepareStatement(flagQuery);
             prep.executeUpdate();
-            if (prep.getUpdateCount() == getUIDcount())
+            if (prep.getUpdateCount() == getUIDcount()) //THIS WILL ALWAYS BE TRUE ??
             {
 //                commit(dbc);
                 rollback(dbc);
@@ -224,20 +215,6 @@ public class Data
 
     }
 
-//    public String createUIDlistForSQL()
-//    {
-//        StringBuilder sb = new StringBuilder();
-//        int UIDcount = 0;
-//        for (Patient p : patientList)
-//        {
-//            sb.append(p.getUID()).append(",");
-//            UIDcount += 1;
-//        }
-//        System.out.println("UID count = " + UIDcount);
-//        String str = sb.toString();
-//        str = str.substring(0, str.length() - 1);
-//        return str;
-//    }
     private void commit(DatabaseConnection dbc) throws SQLException
     {
         dbc.getLiveConn().commit();
@@ -261,7 +238,6 @@ public class Data
         (fkpatient3 (int) ,TakingPart (int), authDate (dateTime), comments (nVarChar), updatedBy (int));
          */
         sb.append("VALUES ");
-
         UIDcount = 0;
         for (Patient x : patientList)
         {
@@ -276,7 +252,6 @@ public class Data
                         .append("),");
                 UIDcount += 1;
             }
-
         }
         str = sb.toString();
         return str.substring(0, str.length() - 1);
@@ -290,9 +265,13 @@ public class Data
         }
     }
 
-    void getNumberOfPatients()
+    public void getNumberOfPatients()
     {
         System.out.println("number of patients = " + patientList.size());
     }
 
+    public void printSQLstring()
+    {
+        System.out.println(flagQuery);
+    }
 }
